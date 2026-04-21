@@ -1,69 +1,72 @@
 ---
 name: sync-claude
-description: Sync Claude config between ~/.claude/ (global) and ./.claude/ (project). Finds missing agents, skills, and settings in either direction and lets you choose what to sync. TRIGGER when the user asks to sync Claude config, sync skills/agents, or check what's missing between global and project Claude settings.
-argument-hint: "[--to-project | --to-global | --both (default: --both)]"
+description: Sync agents and skills across all ~/.claude* profile directories (~/.claude, ~/.claude-praxi, ~/.claude-dr, etc.). Finds what's missing in each profile and fills the gaps from the others. TRIGGER when the user asks to sync Claude profiles, sync skills or agents across profiles, or check what's missing between Claude configs.
 ---
 
-Compare `~/.claude/` (global) with `./.claude/` (current project) and sync missing items between them.
+Sync agents and skills across all `~/.claude*` profile directories by finding what each profile is missing and copying it from the others.
 
 ## Steps
 
-### 1. Discover what exists
-
-Use Bash to list both sides:
+### 1. Discover all Claude profile directories
 
 ```bash
-echo "=== Global agents ===" && ls ~/.claude/agents/ 2>/dev/null || echo "(none)"
-echo "=== Project agents ===" && ls .claude/agents/ 2>/dev/null || echo "(none)"
-echo "=== Global skills ===" && ls ~/.claude/skills/ 2>/dev/null || echo "(none)"
-echo "=== Project skills ===" && ls .claude/skills/ 2>/dev/null || echo "(none)"
+ls -d ~/.claude*/ 2>/dev/null
 ```
 
-### 2. Diff and report
+This finds all directories matching `~/.claude*/` (e.g. `~/.claude/`, `~/.claude-praxi/`, `~/.claude-dr/`).
 
-Compare the two sides and present a clear summary to the user:
+### 2. Build the union inventory
 
-```
-Missing from project (.claude/):     Missing from global (~/.claude/):
-  agents:                              agents:
-    - review-pr-asset-analyzer           - (none)
-  skills:                              skills:
-    - grill-me                           - sprint-planning
-    - sync-claude
-```
-
-### 3. Ask the user what to sync
-
-Unless `$ARGUMENTS` specifies a direction, ask:
-> "What would you like to sync?"
-> 1. Copy missing items → project `.claude/`
-> 2. Copy missing items → global `~/.claude/`
-> 3. Both directions
-> 4. Pick specific items
-
-### 4. Perform the sync
-
-Copy only the missing items (never overwrite existing ones):
+For each profile directory found, list its agents and skills:
 
 ```bash
-# Agent (missing from project):
-cp ~/.claude/agents/<name>.md .claude/agents/
-
-# Agent (missing from global):
-cp .claude/agents/<name>.md ~/.claude/agents/
-
-# Skill (missing from project):
-cp -r ~/.claude/skills/<name> .claude/skills/
-
-# Skill (missing from global):
-cp -r .claude/skills/<name> ~/.claude/skills/
+for dir in ~/.claude*/; do
+  echo "=== $dir ==="
+  echo "-- agents --"
+  ls "$dir/agents/" 2>/dev/null || echo "(none)"
+  echo "-- skills --"
+  ls "$dir/skills/" 2>/dev/null || echo "(none)"
+done
 ```
+
+### 3. Diff and report
+
+Compute the full union of all agents and all skills across every profile. Then show a table of what each profile is missing:
+
+```
+                        ~/.claude   ~/.claude-praxi   ~/.claude-dr
+agents:
+  review-pr-analyzer       ✓              ✗               ✓
+  grill-me                 ✓              ✓               ✗
+skills:
+  sync-claude              ✓              ✗               ✗
+  sprint-planning          ✗              ✓               ✓
+```
+
+### 4. Sync missing items
+
+For each missing item, copy it from any profile that has it:
+
+```bash
+# Agent missing from a profile:
+cp <source-profile>/agents/<name>.md <target-profile>/agents/
+
+# Skill missing from a profile:
+cp -r <source-profile>/skills/<name> <target-profile>/skills/
+```
+
+Rules:
+- **Never overwrite** — only copy to profiles where the item is absent
+- If the same agent/skill name exists in multiple profiles but with **different content**, flag it to the user and ask which version should be the source of truth before syncing
+- Process all profiles in one pass
 
 ### 5. Confirm
 
-List what was copied and remind the user to restart Claude Code to pick up new agents.
+After syncing, re-run the inventory and show the updated state, confirming every profile now has the full set.
+
+Remind the user: **restart any Claude Code sessions using the updated profiles** to pick up the new agents.
 
 ## Notes
-- Never overwrite files that already exist on the destination side — only fill gaps
-- If both sides have a file with the same name but different content, flag it and ask the user which version to keep
-- Scope is limited to `agents/` and `skills/` — do not touch `settings.json`, `memory/`, or other config files unless the user explicitly asks
+- Profile directories are discovered dynamically — no hardcoded list needed
+- Scope: `agents/` and `skills/` only. Do not touch `settings.json`, `memory/`, `CLAUDE.md`, or other config files
+- This skill itself should be installed in all profiles so it's always available regardless of which profile is active

@@ -38,7 +38,7 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 | Command | Description |
 |---------|-------------|
 | `/grill-me` | Knowledge testing / interview prep |
-| `/sync-claude` | Sync missing agents and skills between ~/.claude/ and ./.claude/ |
+| `/sync-claude` | Sync agents and skills across all ~/.claude* profile directories |
 | `/update-claude-skills` | Add a new skill or agent to this repo |
 | `/review-pr` | Review pull requests |
 | `/docx` | Work with Word documents |
