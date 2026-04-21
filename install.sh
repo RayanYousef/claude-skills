@@ -1,29 +1,58 @@
 #!/usr/bin/env bash
-# Installs Claude agents and skills from this repo into the current project's .claude/.
-# Run this from your project root after cloning.
+# Installs Claude agents and skills from this repo.
 #
 # Usage:
-#   bash install.sh             → installs to ./.claude/ (current project)
-#   bash install.sh --global    → installs to ~/.claude/ (all projects)
+#   bash install.sh                    → installs to $(pwd)/.claude/
+#   bash install.sh --global           → installs to ~/.claude/
+#   bash install.sh --target <path>    → installs to <path>/.claude/
+#
+# The script refuses to install into the claude-skills repo itself to avoid
+# polluting the repo with its own content.
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GLOBAL=false
+MODE="project"
+EXPLICIT_TARGET=""
 
-for arg in "$@"; do
-  case $arg in
-    --global) GLOBAL=true ;;
+while [ $# -gt 0 ]; do
+  case $1 in
+    --global) MODE="global" ;;
+    --target) MODE="explicit"; EXPLICIT_TARGET="$2"; shift ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
   esac
+  shift
 done
 
-if $GLOBAL; then
-  TARGET="$HOME/.claude"
-  echo "Installing globally: $TARGET"
-else
-  TARGET="$(pwd)/.claude"
-  echo "Installing into project: $TARGET"
+case $MODE in
+  global)    TARGET_BASE="$HOME" ;;
+  explicit)  TARGET_BASE="$EXPLICIT_TARGET" ;;
+  project)   TARGET_BASE="$(pwd)" ;;
+esac
+
+# Normalize to absolute path
+TARGET_BASE="$(cd "$TARGET_BASE" 2>/dev/null && pwd || echo "$TARGET_BASE")"
+TARGET="$TARGET_BASE/.claude"
+
+# Safety: refuse to install into the repo itself
+if [ "$TARGET_BASE" = "$SCRIPT_DIR" ]; then
+  echo "ERROR: The target directory is the claude-skills repo itself:"
+  echo "  $TARGET_BASE"
+  echo ""
+  echo "This would install the repo's content into its own .claude/ folder."
+  echo "Run the script from your project root, or pass --target <path>."
+  exit 1
 fi
+
+# Safety: warn if target looks like a fresh home directory (no project markers)
+if [ "$MODE" = "project" ] && [ ! -d "$TARGET_BASE/.git" ] && [ ! -f "$TARGET_BASE/CLAUDE.md" ] && [ ! -f "$TARGET_BASE/package.json" ] && [ ! -f "$TARGET_BASE/Cargo.toml" ] && [ ! -f "$TARGET_BASE/pyproject.toml" ]; then
+  echo "WARNING: '$TARGET_BASE' does not look like a project root (no .git, CLAUDE.md, package.json, etc.)."
+  echo "         Target: $TARGET"
+  read -r -p "Continue anyway? [y/N] " confirm
+  [[ "$confirm" =~ ^[Yy]$ ]] || exit 1
+fi
+
+echo "Installing to: $TARGET"
 
 installed=0
 
