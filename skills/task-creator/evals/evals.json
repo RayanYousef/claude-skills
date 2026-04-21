@@ -1,0 +1,23 @@
+{
+    "skill_name": "task-creator",
+    "evals": [
+        {
+            "id": 1,
+            "prompt": "I need to create a task for adding a health bar UI to our VR chemistry lab. It should show the player's exposure level to chemicals, have a warning flash animation when exposure is high, and auto-hide when exposure is zero. Also need to hook it into our existing ChemicalExposureManager.",
+            "expected_output": "Phase 1 clarification: Should suggest splitting because >2 deliverables are implied. Should ask about Epic/Feature/Task classification and propose a breakdown into smaller tasks. Each suggested deliverable must be checkable (e.g. PR, Video, Branch). Should ask where to save the task file(s). In Antigravity, questions should be presented as a Markdown artifact.",
+            "files": []
+        },
+        {
+            "id": 2,
+            "prompt": "Create a task: implement a loading screen that displays experiment tips while the scene loads.",
+            "expected_output": "Phase 1 clarification: Should confirm goal, suggest Task type (1-2 deliverables fit), suggest checkable deliverables (e.g. 'PR with loading screen implementation', 'Video of loading screen in action'), ask where to save the task file. In Antigravity, questions should be presented as a Markdown artifact. After user confirms and says Proceed, output a properly formatted Markdown task and save it as an .md file in the confirmed Tasks folder.",
+            "files": []
+        },
+        {
+            "id": 3,
+            "prompt": "We need an epic for migrating our entire experiment framework from the legacy ScriptableObject pipeline to the new node-based system. This includes updating all 15 experiments, creating migration tooling, updating the editor workflow, and writing documentation.",
+            "expected_output": "Phase 1 clarification: Should confirm Epic classification, suggest high-level checkable deliverables (e.g. PRs, documentation links, migration report), and propose a breakdown into Features and/or Tasks. Should ask where to save the task files. In Antigravity, questions should be presented as a Markdown artifact. Should NOT output any task content until user says Proceed.",
+            "files": []
+        }
+    ]
+}

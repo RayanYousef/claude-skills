@@ -30,4 +30,12 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 
 ## Skills
 
-*(none yet)*
+| Command | Description |
+|---------|-------------|
+| `/docx` | Work with Word documents |
+| `/pdf` | Work with PDF files |
+| `/pdf-ocr-to-docx` | Convert scanned PDFs to Word via OCR |
+| `/pptx` | Work with PowerPoint files |
+| `/sprint-planning` | Sprint planning assistant |
+| `/task-creator` | Create and structure tasks |
+| `/xlsx` | Work with Excel files |
