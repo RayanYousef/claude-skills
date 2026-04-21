@@ -37,7 +37,9 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 
 | Command | Description |
 |---------|-------------|
+| `/export-conversation` | Export the current conversation to a markdown file |
 | `/grill-me` | Knowledge testing / interview prep |
+| `/update-claude-skills` | Add a new skill or agent to this repo |
 | `/review-pr` | Review pull requests |
 | `/docx` | Work with Word documents |
 | `/pdf` | Work with PDF files |
