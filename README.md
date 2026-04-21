@@ -26,12 +26,19 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 
 ## Agents
 
-*(none yet)*
+| Name | Description |
+|------|-------------|
+| review-pr-asset-analyzer | Analyzes asset changes in Unity PRs |
+| review-pr-commit-analyzer | Analyzes commit quality and hygiene in PRs |
+| review-pr-prefab-impact | Analyzes prefab impact in Unity PRs |
+| review-pr-script-analyzer | Analyzes C# script changes in Unity PRs |
 
 ## Skills
 
 | Command | Description |
 |---------|-------------|
+| `/grill-me` | Knowledge testing / interview prep |
+| `/review-pr` | Review pull requests |
 | `/docx` | Work with Word documents |
 | `/pdf` | Work with PDF files |
 | `/pdf-ocr-to-docx` | Convert scanned PDFs to Word via OCR |
