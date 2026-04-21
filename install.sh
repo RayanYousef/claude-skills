@@ -38,7 +38,7 @@ if [ -d "$SCRIPT_DIR/agents" ]; then
       name=$(basename "$f")
       cp "$f" "$TARGET/agents/$name"
       echo "  [agent]  $name"
-      ((installed++))
+      installed=$((installed + 1))
     done
   fi
 fi
@@ -51,7 +51,7 @@ if [ -d "$SCRIPT_DIR/skills" ]; then
     mkdir -p "$TARGET/skills/$skill_name"
     cp -r "$skill_dir"* "$TARGET/skills/$skill_name/"
     echo "  [skill]  /$skill_name"
-    ((installed++))
+    installed=$((installed + 1))
   done
 fi
 
