@@ -37,6 +37,7 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 
 | Command | Description |
 |---------|-------------|
+| `/agent-creator` | Create Claude Code subagent .md files with tools, models, and prompts |
 | `/grill-me` | Knowledge testing / interview prep |
 | `/sync-claude` | Sync agents and skills across all ~/.claude* profile directories |
 | `/update-claude-skills` | Add a new skill or agent to this repo |
