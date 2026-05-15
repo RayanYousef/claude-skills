@@ -18,8 +18,15 @@ WARN_THRESHOLD = int(os.environ.get("CC_CONTEXT_WARN", 100_000))
 BLOCK_THRESHOLD = int(os.environ.get("CC_CONTEXT_BLOCK", 150_000))
 
 
+COMPACT_RESUME_MARKER = "This session is being continued from a previous conversation"
+
+
 def read_last_usage(transcript_path: str) -> int:
-    """Return effective context-token count from the latest usage block, or 0."""
+    """Return effective context-token count from the latest usage block, or 0.
+
+    Resets when a post-compact resume marker is seen so we don't read stale
+    pre-compact `cache_read_input_tokens` values and falsely block the user.
+    """
     p = Path(transcript_path)
     if not p.exists():
         return 0
@@ -35,6 +42,11 @@ def read_last_usage(transcript_path: str) -> int:
                 except json.JSONDecodeError:
                     continue
                 msg = entry.get("message") or entry
+                if isinstance(msg, dict):
+                    content = msg.get("content")
+                    if isinstance(content, str) and content.startswith(COMPACT_RESUME_MARKER):
+                        last_usage = None
+                        continue
                 usage = msg.get("usage") if isinstance(msg, dict) else None
                 if usage:
                     last_usage = usage
