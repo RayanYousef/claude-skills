@@ -84,6 +84,23 @@ if [ -d "$SCRIPT_DIR/skills" ]; then
   done
 fi
 
+# --- Hooks ---
+if [ -d "$SCRIPT_DIR/hooks" ]; then
+  shopt -s nullglob
+  files=("$SCRIPT_DIR/hooks/"*.py)
+  shopt -u nullglob
+  if [ ${#files[@]} -gt 0 ]; then
+    mkdir -p "$TARGET/hooks"
+    for f in "${files[@]}"; do
+      name=$(basename "$f")
+      cp "$f" "$TARGET/hooks/$name"
+      echo "  [hook]   $name"
+      installed=$((installed + 1))
+    done
+    echo "  NOTE: hook scripts copied — wire them into settings.json manually (see README)."
+  fi
+fi
+
 if [ "$installed" -eq 0 ]; then
   echo "Nothing to install."
 else

@@ -22,6 +22,7 @@ agents/          ← subagent .md files  →  .claude/agents/<name>.md
 skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
   <skill-name>/
     SKILL.md
+hooks/           ← hook scripts        →  .claude/hooks/<name>.py
 ```
 
 ## Agents
@@ -49,3 +50,41 @@ skills/          ← slash commands      →  .claude/skills/<name>/SKILL.md
 | `/sprint-planning` | Sprint planning assistant |
 | `/task-creator` | Create and structure tasks |
 | `/xlsx` | Work with Excel files |
+
+## Hooks
+
+Hook scripts are copied to `~/.claude/hooks/` but **not auto-wired** — add the entries below to your `settings.json` to activate them.
+
+| File | Purpose |
+|------|---------|
+| `context-monitor-hook.py` | UserPromptSubmit hook — warns when context usage gets high |
+| `context-monitor-lib.py` | Shared library for the context-monitor hook + statusline |
+| `context-statusline.py` | Status line renderer showing context usage |
+| `sync-profiles.py` | SessionStart hook — syncs agents/skills/projects/MCP across `~/.claude*` profiles |
+| `test_context_monitor.py` | Tests for the context monitor |
+
+Required `settings.json` entries (paths assume global install):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command",
+                    "command": "python \"~/.claude/hooks/sync-profiles.py\"",
+                    "shell": "bash",
+                    "statusMessage": "Syncing Claude profiles...",
+                    "async": true }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command",
+                    "command": "python \"~/.claude/hooks/context-monitor-hook.py\"" }] }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python \"~/.claude/hooks/context-statusline.py\""
+  }
+}
+```
+
+On Windows, replace `~/.claude/...` with the absolute path (e.g. `C:/Users/<you>/.claude/hooks/...`).
