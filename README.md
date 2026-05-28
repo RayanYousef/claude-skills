@@ -1,22 +1,22 @@
-# claude-skills
+# agent-skills-and-rules
 
 Personal **Claude Code** and **Cursor** agents, skills, rules, and context-monitor hooks — reusable across projects.
 
-Source: [github.com/RayanYousef/claude-skills](https://github.com/RayanYousef/claude-skills)
+Source: [github.com/RayanYousef/agent-skills-and-rules](https://github.com/RayanYousef/agent-skills-and-rules)
 
 ## Install
 
 ```bash
 # From your project root — clones and installs into ./.claude/ and ./.cursor/
-git clone https://github.com/RayanYousef/claude-skills /tmp/claude-skills
-bash /tmp/claude-skills/install.sh
+git clone https://github.com/RayanYousef/agent-skills-and-rules /tmp/agent-skills-and-rules
+bash /tmp/agent-skills-and-rules/install.sh
 
 # Global (all projects on this machine)
-bash /tmp/claude-skills/install.sh --global
+bash /tmp/agent-skills-and-rules/install.sh --global
 
 # Only one stack
-bash /tmp/claude-skills/install.sh --claude-only
-bash /tmp/claude-skills/install.sh --cursor-only
+bash /tmp/agent-skills-and-rules/install.sh --claude-only
+bash /tmp/agent-skills-and-rules/install.sh --cursor-only
 ```
 
 After installing, restart Claude Code / Cursor and wire hooks (below).
@@ -63,7 +63,7 @@ Rules in `cursor/rules/`: `orchestrator.mdc`, `vcontainer-di.mdc`, `event-system
 |---------|-------------|
 | `/agent-creator` | Create Claude Code subagent .md files |
 | `/sync-claude` | Sync agents/skills across `~/.claude*` profiles |
-| `/update-claude-skills` | Add a new skill or agent to this repo |
+| `/update-agent-skills` | Add a new skill, agent, rule, or hook to this repo |
 | `/review-pr` | Review pull requests |
 | `/docx`, `/pdf`, `/pptx`, `/xlsx` | Office document workflows |
 | `/pdf-ocr-to-docx` | Scanned PDF → Word via OCR |

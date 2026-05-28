@@ -8,7 +8,7 @@
 #   bash install.sh --claude-only      → skip Cursor files
 #   bash install.sh --cursor-only      → skip Claude files
 #
-# The script refuses to install into the claude-skills repo itself to avoid
+# The script refuses to install into the agent-skills-and-rules repo itself to avoid
 # polluting the repo with its own content.
 
 set -e
@@ -43,7 +43,7 @@ TARGET_CURSOR="$TARGET_BASE/.cursor"
 
 # Safety: refuse to install into the repo itself
 if [ "$TARGET_BASE" = "$SCRIPT_DIR" ]; then
-  echo "ERROR: The target directory is the claude-skills repo itself:"
+  echo "ERROR: The target directory is the agent-skills-and-rules repo itself:"
   echo "  $TARGET_BASE"
   echo ""
   echo "This would install the repo's content into its own .claude/ / .cursor/ folders."
