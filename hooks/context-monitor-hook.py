@@ -1,9 +1,9 @@
-"""UserPromptSubmit hook: warns at WARN_THRESHOLD, blocks at BLOCK_THRESHOLD.
+"""UserPromptSubmit hook: warns at WARN_THRESHOLD, alerts at BLOCK_THRESHOLD.
 
-Claude Code can't auto-execute slash commands from a hook, so at the block
-threshold we stop the turn and tell the user to run /compact. Between warn
-and block we inject a soft note as additional context so Claude knows to be
-concise / suggest wrapping up.
+At the alert threshold we surface a systemMessage to the user telling them to
+/compact or continue (every turn now re-processes the full context, so tokens
+burn faster from here on), and inject a note into additionalContext so Claude
+also knows to be concise. Below that, we inject only the soft note.
 """
 
 import json
@@ -26,14 +26,26 @@ def main():
     tokens = ctxlib.read_last_usage(payload.get("transcript_path", ""))
 
     if tokens >= ctxlib.BLOCK_THRESHOLD:
+        message = (
+            f"Context at {ctxlib.fmt_tokens(tokens)} tokens — past the "
+            f"{ctxlib.fmt_tokens(ctxlib.BLOCK_THRESHOLD)} alert threshold. "
+            f"Beyond this point tokens burn faster: every turn re-processes the "
+            f"full context as cache-read, and pricing doubles past 200k on the "
+            f"1M-context tier. Run /compact to summarize and free up context, "
+            f"or continue if the task is nearly done."
+        )
+        note = (
+            f"[context-monitor] User is at {ctxlib.fmt_tokens(tokens)} tokens, "
+            f"past the {ctxlib.fmt_tokens(ctxlib.BLOCK_THRESHOLD)} alert. Be "
+            f"concise — every turn re-processes the full context and costs rise "
+            f"sharply past 200k."
+        )
         out = {
-            "decision": "block",
-            "reason": (
-                f"Context at {ctxlib.fmt_tokens(tokens)} tokens "
-                f"(block threshold {ctxlib.fmt_tokens(ctxlib.BLOCK_THRESHOLD)}). "
-                f"Run /compact in your next message to summarize and free up context, "
-                f"then resend your prompt."
-            ),
+            "systemMessage": message,
+            "hookSpecificOutput": {
+                "hookEventName": "UserPromptSubmit",
+                "additionalContext": note,
+            },
         }
         print(json.dumps(out))
         sys.exit(0)
@@ -41,7 +53,7 @@ def main():
     if tokens >= ctxlib.WARN_THRESHOLD:
         note = (
             f"[context-monitor] Conversation is at {ctxlib.fmt_tokens(tokens)} tokens "
-            f"(warn at {ctxlib.fmt_tokens(ctxlib.WARN_THRESHOLD)}, hard stop at "
+            f"(warn at {ctxlib.fmt_tokens(ctxlib.WARN_THRESHOLD)}, alert at "
             f"{ctxlib.fmt_tokens(ctxlib.BLOCK_THRESHOLD)}). Keep responses tight and "
             f"suggest /compact if the task is winding down."
         )

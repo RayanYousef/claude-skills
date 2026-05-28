@@ -38,8 +38,8 @@ Compute the full union across every profile for each category. Show a table of w
 ```
                            ~/.claude   ~/.claude-praxi   ~/.claude-dr
 agents:
-  review-pr-analyzer          ✓              ✗               ✓
-  grill-me                    ✓              ✓               ✗
+  review-pr-script-analyzer   ✓              ✗               ✓
+  code-implementer            ✓              ✓               ✗
 skills:
   sync-claude                 ✓              ✗               ✗
   sprint-planning             ✗              ✓               ✓

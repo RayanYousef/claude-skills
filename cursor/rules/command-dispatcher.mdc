@@ -1,0 +1,64 @@
+---
+description: Command dispatcher — command objects, dispatch APIs, undo/history, policies, and events.
+globs: Assets/_Project/**/*.cs
+alwaysApply: false
+---
+
+# Command dispatcher
+
+**When:** User- or agent-driven **actions** that may need undo, validation, middleware, or typed results. The **command object is its own handler** — there is no separate `ICommandHandler<T>` registry.
+
+Infrastructure: `Assets/_Project/Systems/Core/CommandDispatcher/`. Inject `ICommandDispatcher` (from `CommandDispatcher` namespace) via VContainer. The Phase 2 contracts (`IAsyncCommand<TResult>`, `CommandContext`, `CommandResult<T>`, `IDispatchPolicy`, `ICommandHistory`, `IDispatchable`) live in the `CommandDispatcher.Contract` asmdef — reference it from feature asmdefs. **Never** `[RegisterIn]` a command class.
+
+## Choose a contract (new work)
+
+| Use case | Implement | Dispatch |
+|----------|-----------|----------|
+| **Preferred** — async + typed result / validation | `CommandDispatcher.Contract.IAsyncCommand<TResult>` | `await DispatchAsync(cmd, ctx, ct)` → `CommandResult<TResult>` |
+| Simple sync + undo | `ICommand` (parent namespace) | `Dispatch(cmd)` |
+| Legacy async (avoid in new code) | `CommandDispatcher.IAsyncCommand` | `await DispatchAsync(cmd, ct)` |
+
+`IDispatchable` is the shared base (lives in parent `CommandDispatcher` namespace inside the Contract asmdef). Its defaults: `Kind => GetType().FullName`, `IsUndoable => false`.
+
+## Add a Phase 2 command (template)
+
+1. Class in `Systems/<Feature>/Scripts/Commands/` (namespace `<Feature>.Commands`).
+2. Implement `IAsyncCommand<TResult>` (or `IAsyncCommand` alias for `Unit` result). Override `Kind` for short logs; override `IsUndoable => true` only when both `ExecuteAsync` and `UndoAsync` are implemented.
+3. Dependencies via `[Inject]` fields/properties — populated at dispatch by `IObjectResolver.Inject(command)` (commands are not container-registered).
+4. Expected failures: `return CommandResult<T>.Failed(code, message)` — not exceptions. Exceptions propagate and bypass history.
+5. Caller builds `CommandContext` (currently exposes `CorrelationId`) per dispatch.
+6. Instantiate **per dispatch**; never reuse the same command instance (history holds references).
+
+```csharp
+var ctx = new CommandContext { CorrelationId = Guid.NewGuid().ToString() };
+var result = await _dispatcher.DispatchAsync(new MyCommand(args), ctx, ct);
+if (!result.Success) { /* result.FailureCode, FailureMessage */ }
+```
+
+## Middleware (policies)
+
+Implement `CommandDispatcher.Contract.IDispatchPolicy`; register with `[RegisterIn(typeof(GameLifetimeScope))]` + `[RegisterAs(typeof(IDispatchPolicy))]`. The dispatcher composes them via `PolicyChainComposer` — **first registered = outermost**, runs first / unwraps last. The constructor takes `IReadOnlyList<IDispatchPolicy> policies = null` and falls back to `Array.Empty`, so zero policies needs no manual binding. Policies only wrap the typed `DispatchAsync<TResult>` path, not the sync or legacy-async surfaces.
+
+## Events (side effects)
+
+After each surface (`Dispatch`, `DispatchAsync` legacy + typed, `Undo`/`Redo`, `UndoAsync`/`RedoAsync`, `ClearHistory`) the dispatcher publishes `OnCommandDispatchedEvent` / `OnCommandUndoneEvent` / `OnCommandRedoneEvent` / `OnCommandHistoryClearedEvent` via `IEventPublisher`. Payloads carry `IDispatchable` (not `CommandResult`). The typed path publishes **regardless of `result.Success`** — don't treat publish as success.
+
+## History & undo caveats
+
+- Sync `Dispatch` and legacy `DispatchAsync` record history whenever `IsUndoable` is true.
+- Typed `DispatchAsync<TResult>` records only when `IsUndoable && result.Success` (inside the inner call, before any policy unwraps). Exceptions and `Failed` results never enter history.
+- **Phase 2 Contract async undo/redo is not yet wired:** `UndoAsync`/`RedoAsync` only branch on the legacy `CommandDispatcher.IAsyncCommand`. A Contract `IAsyncCommand<TResult>` is `IDispatchable` but **not** legacy `IAsyncCommand`, so it falls through to `((ICommand)entry).Undo()` and throws `InvalidCastException`. Until the dispatcher is extended, keep Contract commands non-undoable or undo them out-of-band.
+- `Dispatch(ICommand)` rejects entries that are *legacy* `IAsyncCommand`; Contract typed commands don't implement `ICommand`, so the compiler stops that misuse.
+- Don't dispatch the same command instance twice.
+
+## Anti-patterns
+
+- Separate handler classes or MediatR-style registration
+- `[RegisterIn]` on command types
+- `Dispatch()` on legacy async commands (throws; use `DispatchAsync`)
+- Confusing the two `IAsyncCommand` namespaces — use **`CommandDispatcher.Contract`** for new code
+- Assuming `AsyncCommandBase` is non-undoable — it overrides `IsUndoable => true` while `UndoAsync` defaults to `throw new NotImplementedException()`
+
+## Canonical references
+
+`CommandDispatcher.cs`, `ICommandDispatcher.cs`, `Contract/IAsyncCommand.cs`, `Contract/CommandResult.cs`, `Contract/CommandContext.cs`, `Contract/IDispatchPolicy.cs`, `Contract/PolicyChainComposer.cs`, `Contract/ICommandHistory.cs`, `CommandHistory.cs`, events in `Scripts/Events/`.

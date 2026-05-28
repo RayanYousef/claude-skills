@@ -1,0 +1,147 @@
+---
+description: Where to place new systems, scripts, scenes, art, and Python servers. Use when creating or adding files, folders, or features.
+globs: Assets/**
+alwaysApply: false
+---
+
+# Project folder structure
+
+**When:** Creating or extending anything in this repo (new system, script, scene, asset, server).
+
+## Roots under `Assets/`
+
+| Path | Purpose |
+|------|---------|
+| `Assets/Settings/` | **Unity** settings — URP assets, renderers, volume profiles, pipeline globals. Not gameplay code. |
+| `Assets/_Project/` | **Game project** — scenes, art, systems, project-specific settings. |
+| `Assets/ThirdParty/` | **Vendor packages** — Asset Store, git submodules, downloaded plugins. Do not edit vendor code here; wrap or extend from `_Project/Systems/` instead. |
+
+Do not put URP / render pipeline assets in `_Project/Settings/`.
+Do not put third-party downloads under `_Project/` or loose at `Assets/` root — use `ThirdParty/<PackageName>/`.
+
+## Systems layout
+
+| Folder | Purpose |
+|--------|---------|
+| `Systems/Core/` | **Shared infrastructure** — event bus, service locator, command dispatch, bootstrap, etc. Used by many features; not tied to one gameplay domain. |
+| `Systems/<FeatureName>/` | **Feature systems** — one folder per concern (e.g. server bridge, player, combat). |
+
+**Feature scope:** Name the folder for the **single concern** it owns. Cross-system code consumes public APIs (URLs, DTOs, events) from the owner system — do not park unrelated gameplay agents or controllers in another system's folder.
+
+**Namespace:** Match the folder name (`<FeatureName>`, `<FeatureName>.Models`, `<FeatureName>.Editor`).
+
+## Per-system layout
+
+```
+Assets/_Project/Systems/<SystemName>/
+  Models/              # optional — serializable DTOs
+  Scripts/             # runtime logic (services, controllers, launchers)
+  Scripts/Commands/    # optional — dispatchable command objects for this system
+  Scripts/Contract/    # optional — asmdef boundary (infra only)
+  Prefabs/             # optional — prefabs owned by this system
+  Editor/              # optional
+  Server/              # optional — co-located Python for this system
+```
+
+Flat `.cs` files at the system root are **legacy**; new runtime code goes in `Scripts/`.
+
+Core sub-features use the same pattern under their folder (e.g. `Systems/Core/VContainer/Prefabs/`, not loose prefabs beside scripts).
+
+### `Prefabs/` — system-owned prefabs
+
+| Put in `Prefabs/` | Put in `Art/` instead |
+|-------------------|----------------------|
+| LifetimeScope / DI harness prefabs | Characters, environment, VFX meshes |
+| Debug or tooling prefabs for this system | Shared props reused by many systems |
+| Spawners, controllers, or UI wired only to this system | Generic material/mesh libraries |
+
+- One `Prefabs/` folder per **system** (or Core sub-feature) root — not mixed into `Scripts/` or `Components/`.
+- Subfolders allowed when useful (`Prefabs/Demo/`, `Prefabs/Debug/`).
+- Scripts stay in `Scripts/`; only the `.prefab` (and optional `.unity` variant) live under `Prefabs/`.
+
+### `Models/` — wire and state data
+
+| Put in `Models/` | Do **not** put in `Models/` |
+|------------------|-----------------------------|
+| `[Serializable]` types for `JsonUtility` / API JSON | Services, `MonoBehaviour`, buses, dispatchers |
+| Request/response DTOs matching API or save files | Interfaces and cross-asmdef abstractions (`Contract/`) |
+| Game state snapshots when owned by this system | Types with behavior (`CommandHistory`, controllers) |
+| Plain POCOs used only as data carriers | Infra result types (`CommandResult<T>` in `Contract/`) |
+
+Gameplay-specific snapshots usually live in the **gameplay** system that builds them; shared **wire** types for an HTTP API belong in the system that owns that API.
+
+### `Scripts/Commands/` — dispatchable actions
+
+Command **classes** for a system live in `Scripts/Commands/`, alongside other runtime code for that system — not at the system root and not in another system's folder. See `command-dispatcher.mdc` for contracts (`IAsyncCommand<TResult>`, undo, policies).
+
+| Put in `Scripts/Commands/` | Do **not** put in `Scripts/Commands/` |
+|------------------------------|---------------------------------------|
+| `IAsyncCommand<TResult>` / `ICommand` types owned by this system | `CommandDispatcher`, `CommandHistory`, policies (→ `Core/CommandDispatcher/Scripts/`) |
+| One class per user/agent action for this feature | Services, `MonoBehaviour`, DTOs, handlers |
+| `[Inject]` on fields — commands are **not** VContainer-registered | Separate handler classes or MediatR-style registries |
+
+- Namespace: `<SystemName>.Commands` (e.g. `LLMServer.Commands`) — folder is under `Scripts/`; namespace stays `.Commands`.
+- Core sub-features follow the same rule (e.g. `Systems/Core/SomeFeature/Scripts/Commands/`).
+- Do not put a second `Commands/` folder at the system root — all dispatchables go under `Scripts/Commands/`.
+
+### `Scripts/Contract/` — shared boundary (infra)
+
+Use only when an asmdef split is needed. Holds interfaces, policies, and infra result types — **not** HTTP JSON DTOs. Do not rename `Contract/` to `Models/`.
+
+### Python mirror
+
+Pydantic models in `Server/` should align by name with C# `Models/`. Use `models.py` or a `models/` package when `main.py` grows.
+
+## Placement map
+
+| You are adding… | Put it here |
+|-----------------|-------------|
+| Cross-cutting infra (events, services, bootstrap) | `Assets/_Project/Systems/Core/` |
+| New gameplay / infra **feature** | `Assets/_Project/Systems/<SystemName>/` (not `Core`) |
+| Serializable API / snapshot / config DTO | `Systems/<SystemName>/Models/*.cs` |
+| Dispatchable command for this system | `Systems/<SystemName>/Scripts/Commands/*.cs` |
+| Runtime logic (launchers, controllers, agents) | `Systems/<SystemName>/Scripts/*.cs` |
+| Prefab owned by one system (scope, spawner, debug harness) | `Systems/<SystemName>/Prefabs/*.prefab` |
+| Cross-asmdef interfaces (infra only) | `Systems/<SystemName>/Scripts/Contract/` (when needed) |
+| Editor-only C# | `Systems/<SystemName>/Editor/` |
+| Python / FastAPI for a system | `Systems/<SystemName>/Server/` |
+| API keys / secrets | `Systems/<SystemName>/Server/local_secrets.py` (gitignored; commit `local_secrets.example.py` only) |
+| Unity **scene** | `Assets/_Project/Scenes/<SceneName>.unity` — update build settings if needed |
+| **Game** settings (input actions, balance SOs, game config) | `Assets/_Project/Settings/` |
+| **Unity** render / URP / default volumes | `Assets/Settings/` |
+| Meshes, textures, materials, shared visual prefabs | `Assets/_Project/Art/` |
+| Asset Store / git / downloaded plugins | `Assets/ThirdParty/<PackageName>/` |
+
+## New system checklist
+
+1. Pick `Systems/Core/` (shared infra) or `Systems/<PascalCaseName>/` (feature).
+2. Create `Scripts/`; add `Scripts/Commands/`, `Models/`, `Prefabs/`, `Editor/`, and `Server/` only when needed.
+3. Do not duplicate systems under `Assets/` root, legacy paths, or a second copy in `StreamingAssets` without a deliberate packaging step.
+
+Example (feature with server + prefab):
+
+```
+Assets/_Project/Systems/LLMServer/
+  Models/
+    ChatResponse.cs
+  Scripts/
+    ServerLauncher.cs
+    Commands/
+      SendChatCommand.cs
+  Prefabs/
+    LLMServerDebug.prefab
+  Editor/
+  Server/
+    main.py
+```
+
+## Co-located Python server paths
+
+When a system ships a `Server/` folder:
+
+- **Editor dev:** `Application.dataPath` + `_Project/Systems/<SystemName>/Server` (path resolution lives in that system's `Scripts/`).
+- **Player build:** copy into `StreamingAssets/<SystemName>/Server` at build time; on first launch copy to `persistentDataPath/<SystemName>/Server` if the process needs a writable tree.
+
+## Before finishing
+
+- New scene in `EditorBuildSettings` if it should be in builds.

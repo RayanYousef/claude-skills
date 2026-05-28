@@ -1,0 +1,59 @@
+---
+description: In-process event bus — publish/subscribe patterns, event types, and lifecycle for cross-feature signals.
+globs: Assets/_Project/**/*.cs
+alwaysApply: false
+---
+
+# Event system
+
+**When:** Notifying other systems of something that already happened (decoupled listeners). **Not** for per-frame hot paths or request/response — use direct references or the command dispatcher.
+
+## Bus API
+
+| Role | Inject | API |
+|------|--------|-----|
+| Publish only | `IEventPublisher` | `Publish<T>(T evt) where T : IEvent` |
+| Listen only | `IEventSubscriber` | `Subscribe<T>(Action<T>)` / `Unsubscribe<T>(Action<T>)` |
+| Both | `IEventManager` | Rare; prefer narrow interfaces |
+
+Implementation: `EventBus` (`Assets/_Project/Systems/Core/EventSystem/Scripts/EventBus.cs`) — singleton in `GameLifetimeScope`, registered as all three interfaces. Synchronous, in-process, **caller-thread** dispatch; no main-thread marshaling. Handlers are invoked over a snapshot of the subscriber list, so subscribing/unsubscribing inside a handler is safe and only takes effect on the next `Publish`. Throwing in a handler aborts the remaining handlers for that publish.
+
+## Add a new event
+
+1. Define in the **owning feature**: `Systems/<Feature>/Scripts/Events/<Name>Event.cs`.
+2. Implement `EventSystem.IEvent` (marker interface, no members).
+3. Prefer **`readonly struct`** with `readonly` fields and a constructor (matches `OnCommandDispatchedEvent` and siblings).
+4. Name: `On<Thing><PastTense>Event` (e.g. `OnCommandDispatchedEvent`).
+5. **No DI registration** for the event type itself.
+
+## Publish
+
+- Inject `IEventPublisher`.
+- Publish **after** the state change in the same call — but be aware the bus does not check success. The dispatcher publishes `OnCommandDispatchedEvent` even when the typed `CommandResult.Success` is `false`, so subscribers must inspect payload state, not treat the event as a success signal.
+
+## Subscribe
+
+- Inject `IEventSubscriber`.
+- Store the **same delegate instance** used in `Subscribe` if you need `Unsubscribe`. Re-subscribing the identical delegate is a no-op (`List.Contains` dedupes); a lambda that isn't stored cannot be unsubscribed.
+- Subscribe at init — `IStartable.Start` for entry points, constructor for singleton listeners, `OnEnable` for injected MonoBehaviours.
+- **Unsubscribe** in `IDisposable.Dispose()` or `OnDisable`. The bus lives as long as `GameLifetimeScope` (effectively the app), so leaked handlers call into dead objects.
+
+## When to use vs alternatives
+
+| Use events | Use something else |
+|------------|-------------------|
+| Cross-system "X happened" notifications | Same-system logic → direct calls |
+| Multiple optional listeners | Undoable work → **command dispatcher** |
+| UI reacting to command history | High-frequency / per-frame updates → no bus |
+
+## Anti-patterns
+
+- `IEventManager` when you only publish or only listen
+- Lambda subscribe without a stored reference → cannot unsubscribe
+- Assuming handler order or async delivery
+- Throwing in handlers (aborts later handlers for that publish)
+- Treating `OnCommandDispatchedEvent` as a success signal — it fires on graceful `CommandResult.Failed` too
+
+## Canonical references
+
+`EventBus.cs`, `IEvent.cs`, `IEventPublisher.cs`, `IEventSubscriber.cs`, command events under `CommandDispatcher/Scripts/Events/`, publish call sites in `CommandDispatcher.cs`.

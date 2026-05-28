@@ -1,4 +1,4 @@
-"""Test harness: builds fake transcripts and feeds them to both scripts."""
+"""Test harness for Cursor context hooks (mirrors ~/.claude/hooks/test_context_monitor.py)."""
 
 import json
 import subprocess
@@ -6,11 +6,12 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
-HOOK = HERE / "context-monitor-hook.py"
+BEFORE_SUBMIT = HERE / "context-before-submit.py"
 STATUSLINE = HERE / "context-statusline.py"
+POST_TOOL = HERE / "context-post-tool.py"
 
 CASES = [
-    ("ok       (50k)",  50_000),
+    ("ok       (50k)", 50_000),
     ("warn    (110k)", 110_000),
     ("block   (160k)", 160_000),
 ]
@@ -49,19 +50,24 @@ def run(script: Path, payload: dict) -> str:
     return result.stdout.strip() or "(no output)"
 
 
-def main():
+def main() -> None:
     for label, tokens in CASES:
         path = make_transcript(tokens)
         payload = {
             "transcript_path": path,
-            "cwd": "E:/Personal Programs",
-            "model": {"display_name": "Opus 4.7"},
-            "hook_event_name": "UserPromptSubmit",
+            "conversation_id": f"test-{tokens}",
+            "cwd": "H:/Unity/1_My Projects/llm-game-flow",
+            "model": "composer-2.5",
+            "composer_mode": "agent",
+            "hook_event_name": "beforeSubmitPrompt",
             "prompt": "hello",
+            "context_tokens": tokens,
+            "context_window_size": 200000,
         }
         print(f"=== {label} ===")
-        print(f"  statusline: {run(STATUSLINE, payload)}")
-        print(f"  hook      : {run(HOOK, payload)}")
+        print(f"  statusline     : {run(STATUSLINE, payload)}")
+        print(f"  beforeSubmit   : {run(BEFORE_SUBMIT, payload)}")
+        print(f"  postToolUse    : {run(POST_TOOL, {**payload, 'hook_event_name': 'postToolUse'})}")
         print()
 
 

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "python \"{{CURSOR_HOOKS}}/context-session-start.py\""
+      }
+    ],
+    "beforeSubmitPrompt": [
+      {
+        "command": "python \"{{CURSOR_HOOKS}}/context-before-submit.py\""
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python \"{{CURSOR_HOOKS}}/context-post-tool.py\""
+      }
+    ],
+    "preCompact": [
+      {
+        "command": "python \"{{CURSOR_HOOKS}}/context-pre-compact.py\""
+      }
+    ]
+  }
+}
